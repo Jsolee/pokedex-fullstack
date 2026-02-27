@@ -45,12 +45,11 @@ export default async function Home({
   return (
     <div className="space-y-10">
       <header className="rounded-3xl border border-emerald-900/50 bg-emerald-950/70 p-6 shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
-        <p className="pixel-font text-xs text-emerald-300">Mini Pokédex // Supabase Cache</p>
+        <p className="pixel-font text-xs text-emerald-300">Mini Pokédex</p>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="pixel-font text-2xl text-primary">GameBoy View</h1>
             <p className="text-sm text-emerald-200/80">
-              Consulta Pokémon en vivo desde la PokeAPI y cachea detalles en Supabase.
             </p>
           </div>
           <Link
@@ -83,7 +82,7 @@ export default async function Home({
         </div>
       )}
 
-      {data.totalPages > 1 && !data.isSearch && (
+      {data.totalPages > 1 && !queryParam && (
         <div className="flex justify-center">
           <PaginationControls page={data.page} totalPages={data.totalPages} />
         </div>

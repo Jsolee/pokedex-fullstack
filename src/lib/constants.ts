@@ -50,12 +50,17 @@ export const LEGENDARY_FILTER_OPTIONS = [
   { value: "standard", label: "No legendarios" },
 ] as const;
 
-export const BACKGROUND_WALLPAPERS = [
-  "/backgrounds/foto1.jpg",
-  "/backgrounds/foto2.jpg",
-  "/backgrounds/foto3.jpeg",
-  "/backgrounds/foto4.jpeg",
-] as const;
+export type WallpaperOption = {
+  src: string;
+};
+
+export const BACKGROUND_WALLPAPERS: WallpaperOption[] = [
+  { src: "/backgrounds/foto2.webp" },
+  { src: "/backgrounds/foto3.webp" },
+  { src: "/backgrounds/foto4.webp" },
+  { src: "/backgrounds/foto5.webp" },
+  { src: "/backgrounds/foto6.webp" },
+];
 
 export function getGenerationLabel(value: string | null | undefined) {
   if (!value) return "Generación desconocida";

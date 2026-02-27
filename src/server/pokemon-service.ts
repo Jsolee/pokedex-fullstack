@@ -26,6 +26,21 @@ import type { PrismaClient } from "@prisma/client";
 const CACHE_TTL_MS = CACHE_TTL_HOURS * 60 * 60 * 1000;
 const OFFICIAL_ARTWORK_URL =
   "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork";
+const FULL_INDEX_TTL_MS = 1000 * 60 * 60 * 6; // 6 horas
+const POKEMON_INDEX_CACHE_KEY = "__pokemon_index__";
+const INDEX_BUILD_CONCURRENCY = 40;
+
+type PokemonIndexCache = {
+  items: PokemonListItem[];
+  timestamp: number;
+};
+
+let pokemonIndexCache: PokemonIndexCache | null = null;
+let pokemonIndexPromise: Promise<PokemonListItem[]> | null = null;
+
+function sortPokemonList(items: PokemonListItem[]) {
+  return [...items].sort((a, b) => a.id - b.id);
+}
 
 type JsonCompatible = Record<string, unknown>;
 type PokemonCacheRecord = Awaited<ReturnType<PrismaClient["pokemonCache"]["findUnique"]>>;
@@ -98,7 +113,8 @@ async function buildDetailedListItem(
   },
 ): Promise<PokemonListItem> {
   try {
-    const species = options?.species ?? (await fetchPokemonSpecies(detail.name));
+    const speciesName = detail.species?.name ?? detail.name;
+    const species = options?.species ?? (await fetchPokemonSpecies(speciesName));
     const evolution = options?.evolution ?? (await resolveEvolutionMetadata(species));
     const isLegendary =
       options?.isLegendaryOverride ?? Boolean(species.is_legendary || species.is_mythical);
@@ -219,19 +235,50 @@ export async function getPokemonList({
     }
   }
   if (hasFilters) {
+    const safePage = Number.isFinite(page) && page > 0 ? page : 1;
     const filteredItems = await collectFilteredPokemon(filters!);
+    const total = filteredItems.length;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const normalizedPage = Math.min(Math.max(1, safePage), totalPages);
+    const start = (normalizedPage - 1) * pageSize;
+    const items = filteredItems.slice(start, start + pageSize);
+
     return {
-      items: filteredItems,
-      total: filteredItems.length,
-      page: 1,
-      pageSize: filteredItems.length || pageSize,
-      totalPages: 1,
+      items,
+      total,
+      page: normalizedPage,
+      pageSize,
+      totalPages,
       isSearch: true,
       filtersApplied: true,
     };
   }
 
   const safePage = Number.isFinite(page) && page > 0 ? page : 1;
+
+  try {
+    const index = await getFullPokemonIndex();
+    const total = Math.min(index.length, MAX_POKEMON_COUNT);
+    if (total > 0) {
+      const totalPages = Math.max(1, Math.ceil(total / pageSize));
+      const normalizedPage = Math.min(Math.max(1, safePage), totalPages);
+      const start = (normalizedPage - 1) * pageSize;
+      const items = index.slice(start, start + pageSize);
+
+      return {
+        items,
+        total,
+        page: normalizedPage,
+        pageSize,
+        totalPages,
+        isSearch: false,
+        filtersApplied: false,
+      };
+    }
+  } catch (error) {
+    console.warn("No se pudo paginar desde el índice completo, usando listado remoto", error);
+  }
+
   const listing = await fetchPokemonListing(safePage, pageSize);
   const items = await Promise.all(
     listing.results.map(async (result) => {
@@ -386,6 +433,17 @@ function matchesFilters(pokemon: PokemonListItem, filters: PokemonFilters) {
 }
 
 async function collectFilteredPokemon(filters: PokemonFilters) {
+  try {
+    const index = await getFullPokemonIndex();
+    const filtered = index.filter((pokemon: PokemonListItem) => matchesFilters(pokemon, filters));
+    return sortPokemonList(filtered);
+  } catch (error) {
+    console.warn("No se pudo usar el índice completo, aplicando método alternativo", error);
+    return collectFilteredPokemonLegacy(filters);
+  }
+}
+
+async function collectFilteredPokemonLegacy(filters: PokemonFilters) {
   const candidateNames = await resolveCandidateNames(filters);
   const uniqueNames = Array.from(new Set(candidateNames)).slice(0, MAX_POKEMON_COUNT);
 
@@ -431,6 +489,105 @@ async function collectFilteredPokemon(filters: PokemonFilters) {
   });
 
   return detailed.filter((item): item is PokemonListItem => Boolean(item));
+}
+
+async function getFullPokemonIndex(): Promise<PokemonListItem[]> {
+  if (pokemonIndexCache && Date.now() - pokemonIndexCache.timestamp < FULL_INDEX_TTL_MS) {
+    return pokemonIndexCache.items;
+  }
+
+  const cached = await loadPokemonIndexFromDatabase();
+  if (cached) {
+    pokemonIndexCache = cached;
+    return cached.items;
+  }
+
+  if (pokemonIndexPromise) {
+    return pokemonIndexPromise;
+  }
+
+  pokemonIndexPromise = buildPokemonIndex()
+    .then(async (items) => {
+      pokemonIndexCache = { items, timestamp: Date.now() };
+      await persistPokemonIndex(items);
+      return items;
+    })
+    .finally(() => {
+      pokemonIndexPromise = null;
+    });
+
+  return pokemonIndexPromise;
+}
+
+async function buildPokemonIndex(): Promise<PokemonListItem[]> {
+  const names = await fetchAllPokemonNames();
+  const seenSpecies = new Set<string>();
+
+  const detailed = await mapWithBatches(names, INDEX_BUILD_CONCURRENCY, async (name) => {
+    try {
+      const detail = await fetchPokemonByName(name);
+      const speciesName = detail.species?.name ?? detail.name;
+      if (seenSpecies.has(speciesName)) {
+        return null;
+      }
+      seenSpecies.add(speciesName);
+
+      const species = await fetchPokemonSpecies(speciesName);
+      const evolution = await resolveEvolutionMetadata(species);
+
+      return await buildDetailedListItem(detail, {
+        species,
+        evolution,
+        isLegendaryOverride: Boolean(species.is_legendary || species.is_mythical),
+      });
+    } catch (error) {
+      console.warn(`No se pudo indexar ${name}`, error);
+      return null;
+    }
+  });
+
+  const enriched = detailed.filter((item): item is PokemonListItem => Boolean(item));
+  return sortPokemonList(enriched);
+}
+
+async function loadPokemonIndexFromDatabase(): Promise<PokemonIndexCache | null> {
+  try {
+    const record = (await runPrisma((client) =>
+      client.pokemonCache.findUnique({ where: { name: POKEMON_INDEX_CACHE_KEY } }),
+    )) as PokemonCacheRecord | null;
+
+    if (!record) {
+      return null;
+    }
+
+    if (Date.now() - new Date(record.updatedAt).getTime() > FULL_INDEX_TTL_MS) {
+      return null;
+    }
+
+  const hydrated = ((record.payload ?? []) as PokemonListItem[]).filter(Boolean);
+  const items = sortPokemonList(hydrated);
+  return { items, timestamp: new Date(record.updatedAt).getTime() };
+  } catch (error) {
+    console.warn(
+      "[cache] No se pudo cargar el índice desde Supabase, usando únicamente cache en memoria",
+      error,
+    );
+    return null;
+  }
+}
+
+async function persistPokemonIndex(items: PokemonListItem[]) {
+  try {
+    await runPrisma((client) =>
+      client.pokemonCache.upsert({
+        where: { name: POKEMON_INDEX_CACHE_KEY },
+        update: { payload: items as unknown as never },
+        create: { name: POKEMON_INDEX_CACHE_KEY, payload: items as unknown as never },
+      }),
+    );
+  } catch (error) {
+    console.warn("No se pudo guardar el índice en Supabase", error);
+  }
 }
 
 function selectFlavorText(species: PokemonSpeciesResponse) {

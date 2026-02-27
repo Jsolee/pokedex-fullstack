@@ -142,6 +142,17 @@ export function SearchForm({
         {renderSelect("Evolución", "evolution", evolutionOptions, "Cualquiera")}
         {renderSelect("Rareza", "legendary", legendaryOptions, "Todas")}
       </div>
+      {isPending && (
+        <div className="pixel-border flex items-center gap-3 rounded-2xl border-emerald-800/70 bg-emerald-950/70 px-4 py-3">
+          <div className="flex items-center justify-center">
+            <div className="pokedex-loader__pokeball pokedex-loader__pokeball--mini" aria-hidden />
+          </div>
+          <div>
+            <p className="pixel-font text-[10px] uppercase tracking-[0.35em] text-emerald-200">Loading...</p>
+            <p className="text-xs text-emerald-100/80">Calculando filtros de la Pokédex</p>
+          </div>
+        </div>
+      )}
     </form>
   );
 }

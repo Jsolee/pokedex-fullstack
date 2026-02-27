@@ -1,6 +1,7 @@
 import { DEFAULT_PAGE_SIZE, MAX_POKEMON_COUNT, POKEAPI_BASE_URL } from "./constants";
 
 const BASE_URL = POKEAPI_BASE_URL.replace(/\/$/, "");
+const DEFAULT_PAGINATION_LIMIT = 250;
 
 async function getJson<T>(endpoint: string) {
   const response = await fetch(`${BASE_URL}${endpoint}`, {
@@ -32,6 +33,7 @@ export interface PokemonApiResponse {
   name: string;
   height: number;
   weight: number;
+  species: { name: string; url: string };
   sprites: {
     front_default: string | null;
     back_default: string | null;
@@ -111,6 +113,39 @@ export interface PokemonEncounterResponse {
 const speciesCache = new Map<string, PokemonSpeciesResponse>();
 const evolutionCache = new Map<string, EvolutionChainResponse>();
 
+type NamedResource = { name: string; url: string };
+
+async function fetchPaginatedList(
+  endpoint: string,
+  options?: { limit?: number; maxItems?: number },
+): Promise<{ count: number; results: NamedResource[] }> {
+  const limit = Math.max(1, options?.limit ?? DEFAULT_PAGINATION_LIMIT);
+  const maxItems = options?.maxItems ?? Number.POSITIVE_INFINITY;
+  let offset = 0;
+  let totalCount = 0;
+  const results: NamedResource[] = [];
+
+  while (results.length < maxItems) {
+    const page = await getJson<PokemonListResponse>(`/${endpoint}?limit=${limit}&offset=${offset}`);
+    if (!totalCount) {
+      totalCount = page.count;
+    }
+
+    results.push(...page.results);
+
+    if (!page.next || page.results.length === 0) {
+      break;
+    }
+
+    offset += limit;
+  }
+
+  return {
+    count: totalCount || results.length,
+    results: results.slice(0, maxItems),
+  };
+}
+
 export async function fetchPokemonListing(page: number, limit = DEFAULT_PAGE_SIZE) {
   const offset = Math.max(0, page - 1) * limit;
   return getJson<PokemonListResponse>(`/pokemon?limit=${limit}&offset=${offset}`);
@@ -122,7 +157,7 @@ export async function fetchPokemonByName(nameOrId: string) {
 }
 
 export async function fetchAllTypes() {
-  const list = await getJson<{ results: Array<{ name: string; url: string }> }>("/type?limit=1000");
+  const list = await fetchPaginatedList("type", { limit: 100, maxItems: 1000 });
   const detailed = await Promise.all(
     list.results.map(async (entry) => getJson<PokemonTypeApiResponse>(`/type/${entry.name}`)),
   );
@@ -140,7 +175,10 @@ export async function fetchGenerationSpeciesNames(generation: string) {
 }
 
 export async function fetchAllPokemonNames() {
-  const list = await getJson<PokemonListResponse>(`/pokemon?limit=${MAX_POKEMON_COUNT}&offset=0`);
+  const list = await fetchPaginatedList("pokemon", {
+    limit: DEFAULT_PAGINATION_LIMIT,
+    maxItems: MAX_POKEMON_COUNT,
+  });
   return list.results.map((entry) => entry.name);
 }
 
