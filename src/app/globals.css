@@ -27,6 +27,7 @@
   --chart-3: #3ab352;
   --chart-4: #2c8f47;
   --chart-5: #1f6235;
+  --wallpaper-image: url("/backgrounds/foto1.jpg");
 }
 
 .dark {
@@ -63,20 +64,34 @@ body {
 }
 
 .bg-gameboy-grid {
+  background-color: #050d09;
   background-image:
-    linear-gradient(rgba(78, 120, 90, 0.2) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(78, 120, 90, 0.2) 1px, transparent 1px);
-  background-size: 32px 32px, 32px 32px;
-  background-position: center;
+    linear-gradient(rgba(78, 120, 90, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(78, 120, 90, 0.12) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(5, 12, 9, 0.55), rgba(5, 12, 9, 0.78)),
+    var(--wallpaper-image);
+  background-size: 32px 32px, 32px 32px, cover, cover;
+  background-position: center, center, center top, center top;
+  background-repeat: repeat, repeat, no-repeat, no-repeat;
+  background-attachment: scroll;
+  background-blend-mode: normal, normal, multiply, normal;
 }
 
 .gameboy-shell {
-  background: radial-gradient(circle at top, #1f3a27 0%, #0c1b13 70%);
+  position: relative;
   border: 4px solid #0f2218;
   box-shadow: 0 0 30px rgba(0, 0, 0, 0.25);
   border-radius: 32px;
-  position: relative;
   overflow: hidden;
+  background-color: rgba(8, 18, 13, 0.9);
+  background-image:
+    linear-gradient(180deg, rgba(5, 14, 10, 0.75), rgba(5, 14, 10, 0.9)),
+    var(--wallpaper-image);
+  background-size: cover, cover;
+  background-position: center top, center top;
+  background-repeat: no-repeat, no-repeat;
+  background-attachment: scroll;
+  backdrop-filter: saturate(120%) contrast(105%);
 }
 
 .pixel-border {

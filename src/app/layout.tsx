@@ -3,6 +3,7 @@ import { Press_Start_2P, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
 import { HomeButton } from "@/components/navigation/home-button";
+import { WallpaperController } from "@/components/ui/wallpaper-controller";
 
 const pixel = Press_Start_2P({
   weight: "400",
@@ -31,6 +32,7 @@ export default function RootLayout({
       <body
         className={`${pixel.variable} ${sans.variable} bg-gameboy-grid text-foreground antialiased`}
       >
+        <WallpaperController />
         <div className="gameboy-shell min-h-screen rounded-[32px] px-4 py-6 text-base text-emerald-50 shadow-2xl sm:px-8">
           <main className="mx-auto max-w-6xl space-y-6">
             <HomeButton className="sticky top-4 z-10" />
