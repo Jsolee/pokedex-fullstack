@@ -1,26 +1,136 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --radius: 0.125rem;
+  --background: #0c1b13;
+  --foreground: #d6f5c4;
+  --card: #14281b;
+  --card-foreground: #ebffe1;
+  --popover: #112217;
+  --popover-foreground: #d6f5c4;
+  --primary: #9ff277;
+  --primary-foreground: #132610;
+  --secondary: #1b3323;
+  --secondary-foreground: #c9f6b8;
+  --muted: #223828;
+  --muted-foreground: #9dc48c;
+  --accent: #1f3a27;
+  --accent-foreground: #e2ffd4;
+  --destructive: #f87171;
+  --border: #36513c;
+  --input: #203528;
+  --ring: #b9ff9c;
+  --chart-1: #9ff277;
+  --chart-2: #6fd86a;
+  --chart-3: #3ab352;
+  --chart-4: #2c8f47;
+  --chart-5: #1f6235;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  --background: #050b08;
+  --foreground: #e6ffe0;
+  --card: #0e1a13;
+  --card-foreground: #dfffd2;
+  --popover: #0e1a13;
+  --popover-foreground: #dfffd2;
+  --primary: #b7ff93;
+  --primary-foreground: #0c1b13;
+  --secondary: #112217;
+  --secondary-foreground: #cdeebe;
+  --muted: #112217;
+  --muted-foreground: #9dc48c;
+  --accent: #14281b;
+  --accent-foreground: #e2ffd4;
+  --destructive: #f87171;
+  --border: #243629;
+  --input: #1a2b1f;
+  --ring: #b7ff93;
+  --chart-1: #b7ff93;
+  --chart-2: #8ae079;
+  --chart-3: #5fb860;
+  --chart-4: #3e8b49;
+  --chart-5: #2a5f34;
 }
 
 body {
-  background: var(--background);
+  font-family: var(--font-sans), "Space Grotesk", system-ui;
+  letter-spacing: 0.05em;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--background);
+}
+
+.bg-gameboy-grid {
+  background-image:
+    linear-gradient(rgba(78, 120, 90, 0.2) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(78, 120, 90, 0.2) 1px, transparent 1px);
+  background-size: 32px 32px, 32px 32px;
+  background-position: center;
+}
+
+.gameboy-shell {
+  background: radial-gradient(circle at top, #1f3a27 0%, #0c1b13 70%);
+  border: 4px solid #0f2218;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.25);
+  border-radius: 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+.pixel-border {
+  border: 2px solid #3f5a43;
+  box-shadow:
+    0 0 0 2px #132610,
+    inset 0 0 0 2px #132610;
+}
+
+.scanline-overlay {
+  position: relative;
+}
+
+.scanline-overlay::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(0, 0, 0, 0.08) 50%, transparent 50%);
+  background-size: 100% 4px;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+
+.card-glow {
+  box-shadow:
+    0 0 20px rgba(159, 242, 119, 0.15),
+    inset 0 0 30px rgba(20, 40, 27, 0.6);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+}
+
+@layer utilities {
+  .pixel-shadow {
+    box-shadow:
+      0 4px 0 #0b170f,
+      0 8px 0 #08100b;
+  }
+
+  .pixel-font {
+    font-family: var(--font-pixel), "Press Start 2P", cursive;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .stat-bar::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: linear-gradient(90deg, rgba(255, 255, 255, 0.15) 50%, transparent 50%);
+    background-size: 12px;
+    mix-blend-mode: screen;
+  }
 }

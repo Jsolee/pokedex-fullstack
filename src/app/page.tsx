@@ -1,65 +1,120 @@
-import Image from "next/image";
+import Link from "next/link";
 
-export default function Home() {
+import { PaginationControls } from "@/components/pagination/pagination-controls";
+import { PokemonCard } from "@/components/pokedex/pokemon-card";
+import { DataState } from "@/components/state/data-state";
+import { SearchForm } from "@/components/search/search-form";
+import {
+  EVOLUTION_STAGE_OPTIONS,
+  LEGENDARY_FILTER_OPTIONS,
+  POKEMON_GENERATIONS,
+  POKEMON_TYPE_OPTIONS,
+} from "@/lib/constants";
+import { getPokemonList, type PokemonFilters } from "@/server/pokemon-service";
+
+export const dynamic = "force-dynamic";
+
+type SearchParams =
+  | Promise<Record<string, string | string[] | undefined>>
+  | Record<string, string | string[] | undefined>;
+
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: SearchParams;
+}) {
+  const params = await searchParams;
+  const queryParam = Array.isArray(params.query) ? params.query[0] : params.query;
+  const pageParam = Array.isArray(params.page) ? params.page[0] : params.page;
+  const typeParam = Array.isArray(params.type) ? params.type[0] : params.type;
+  const generationParam = Array.isArray(params.generation) ? params.generation[0] : params.generation;
+  const evolutionParam = Array.isArray(params.evolution) ? params.evolution[0] : params.evolution;
+  const legendaryParam = Array.isArray(params.legendary) ? params.legendary[0] : params.legendary;
+
+  const page = Number(pageParam ?? 1) || 1;
+  const filters = normalizeFilters({ typeParam, generationParam, evolutionParam, legendaryParam });
+  const data = await getPokemonList({ page, query: queryParam ?? undefined, filters });
+  const isEmpty = data.items.length === 0;
+  const filtersActive = Boolean(filters.type || filters.generation || filters.evolution || filters.legendary);
+  const emptyDescription = queryParam
+    ? "Ningún Pokémon coincide con tu búsqueda. Intenta otro nombre o ID."
+    : filtersActive
+      ? "No hay Pokémon que cumplan con los filtros seleccionados. Ajusta los parámetros para ver más resultados."
+      : "Ningún Pokémon coincide con tu búsqueda. Intenta con otro nombre o id.";
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <div className="space-y-10">
+      <header className="rounded-3xl border border-emerald-900/50 bg-emerald-950/70 p-6 shadow-[0_10px_40px_rgba(0,0,0,0.35)]">
+        <p className="pixel-font text-xs text-emerald-300">Mini Pokédex // Supabase Cache</p>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="pixel-font text-2xl text-primary">GameBoy View</h1>
+            <p className="text-sm text-emerald-200/80">
+              Consulta Pokémon en vivo desde la PokeAPI y cachea detalles en Supabase.
+            </p>
+          </div>
+          <Link
+            href="/types"
+            className="pixel-font rounded-md border border-emerald-400/60 bg-emerald-900/40 px-4 py-2 text-xs uppercase tracking-widest text-emerald-100 hover:bg-emerald-800/60"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            Ver tipos
+          </Link>
         </div>
-      </main>
+        <div className="mt-6">
+          <SearchForm
+            placeholder="Busca por nombre o id"
+            initialQuery={queryParam?.toString() ?? ""}
+            initialFilters={filters}
+            typeOptions={typeOptions}
+            generationOptions={POKEMON_GENERATIONS}
+            evolutionOptions={EVOLUTION_STAGE_OPTIONS}
+            legendaryOptions={LEGENDARY_FILTER_OPTIONS}
+          />
+        </div>
+      </header>
+
+      {isEmpty ? (
+        <DataState title="Sin resultados" description={emptyDescription} />
+      ) : (
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {data.items.map((pokemon) => (
+            <PokemonCard key={pokemon.id} pokemon={pokemon} />
+          ))}
+        </div>
+      )}
+
+      {data.totalPages > 1 && !data.isSearch && (
+        <div className="flex justify-center">
+          <PaginationControls page={data.page} totalPages={data.totalPages} />
+        </div>
+      )}
     </div>
   );
 }
+
+function normalizeFilters({
+  typeParam,
+  generationParam,
+  evolutionParam,
+  legendaryParam,
+}: {
+  typeParam?: string;
+  generationParam?: string;
+  evolutionParam?: string;
+  legendaryParam?: string;
+}): PokemonFilters {
+  const type = POKEMON_TYPE_OPTIONS.includes((typeParam ?? "") as (typeof POKEMON_TYPE_OPTIONS)[number])
+    ? (typeParam as PokemonFilters["type"])
+    : null;
+  const generation = POKEMON_GENERATIONS.find((entry) => entry.value === generationParam)?.value ?? null;
+  const evolution = EVOLUTION_STAGE_OPTIONS.find((entry) => entry.value === evolutionParam)?.value ?? null;
+  const legendary =
+    legendaryParam === "legendary" || legendaryParam === "standard" ? (legendaryParam as PokemonFilters["legendary"]) : null;
+
+  return { type, generation, evolution, legendary };
+}
+
+const typeOptions = POKEMON_TYPE_OPTIONS.map((type) => ({
+  value: type,
+  label: type.replace(/\b\w/g, (char) => char.toUpperCase()),
+}));
