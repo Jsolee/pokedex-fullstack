@@ -1,36 +1,67 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+<div align="center">
+  <h1 style="margin-bottom:0">🧭 Mini Pokédex</h1>
+  <p style="margin-top:4px">Toque Game Boy, filtros veloces y fondos que no pierden detalle.</p>
+</div>
 
-## Getting Started
+<p align="center">
+  <img src="public/backgrounds/foto3.webp" alt="Vista previa de la Mini Pokédex" width="720" />
+</p>
 
-First, run the development server:
+---
 
+## ✨ Highlights
+- Paginación con filtros combinables (tipo, generación, etapa, legendarios).
+- Fichas con arte oficial, stats clave y salto rápido a la vista detallada.
+- Fondos fijos en cover/center para mantener nitidez sin “zoom hops”.
+- Loader full-screen con Pokéball solo mientras llegan los primeros datos.
+- Índice en memoria + calentado en segundo plano para reducir el tiempo de espera inicial.
+
+## 🎮 Cómo se usa
+1) Abre la home, juega con los filtros o busca por nombre/ID.
+2) Navega páginas con el control inferior; los filtros mantienen la paginación.
+3) Entra a `/pokemon/[name]` para ver sprites, flavor text y encuentros.
+4) Consulta `/types` para daño/resistencias por tipo.
+
+## 🛠️ Stack
+- Next.js 16 (App Router) · React 19 · TypeScript
+- Tailwind utilities + UI propia
+- Prisma como cliente opcional de caché (Supabase/Postgres)
+- PokeAPI como fuente de datos
+
+## 🚀 Scripts rápidos
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install          # deps
+npm run dev          # entorno local
+npm run lint -- --max-warnings=0
+npm run build        # producción
 ```
+Por defecto sirve en `http://localhost:3000`.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🔧 Variables de entorno
+Guárdalas en `.env.local` si activas caché en BD:
+```
+DATABASE_URL="postgres://<user>:<password>@<host>:5432/<db>"
+CACHE_TTL_HOURS=24
+POKEAPI_BASE_URL="https://pokeapi.co/api/v2"
+```
+Sin base de datos, el índice cae a modo memoria sin bloquear el arranque.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🧩 Arquitectura en breve
+- `src/app`: rutas, layout y páginas (`/types`, `/pokemon/[name]`).
+- `src/components`: UI (píldoras de tipo, cards, loaders, paginación, fondos).
+- `src/server`: servicios de listado, filtros, perfiles y caché.
+- `src/lib`: utilidades (formato, colores de tipo, cliente PokeAPI).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## ⚡ Rendimiento y UX
+- Índice: se sirve cache caliente si existe; si no, se construye en background mientras ves resultados mínimos.
+- PokeAPI: listados paginados en lotes grandes (250) para bootstrap más rápido.
+- Loader: ocupa todo el viewport, pero se retira en cuanto llega la primera tanda.
 
-## Learn More
+## ✅ Checklist exprés
+- `npm run lint -- --max-warnings=0`
+- `npm run build`
+- (Opcional) Configura Supabase/Postgres para cachear el índice completo.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## ℹ️ Notas
+- Si el primer arranque parece lento sin caché, deja que el índice se caliente; la app ya devuelve los primeros resultados.
+- Las búsquedas directas por nombre/ID responden inmediato sin recorrer el índice completo.
