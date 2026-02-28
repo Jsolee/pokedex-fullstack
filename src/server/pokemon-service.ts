@@ -257,13 +257,13 @@ export async function getPokemonList({
   const safePage = Number.isFinite(page) && page > 0 ? page : 1;
 
   try {
-    const index = await getFullPokemonIndex();
-    const total = Math.min(index.length, MAX_POKEMON_COUNT);
-    if (total > 0) {
+    const cachedIndex = await getCachedPokemonIndex();
+    if (cachedIndex?.length) {
+      const total = Math.min(cachedIndex.length, MAX_POKEMON_COUNT);
       const totalPages = Math.max(1, Math.ceil(total / pageSize));
       const normalizedPage = Math.min(Math.max(1, safePage), totalPages);
       const start = (normalizedPage - 1) * pageSize;
-      const items = index.slice(start, start + pageSize);
+      const items = cachedIndex.slice(start, start + pageSize);
 
       return {
         items,
@@ -276,20 +276,22 @@ export async function getPokemonList({
       };
     }
   } catch (error) {
-    console.warn("No se pudo paginar desde el índice completo, usando listado remoto", error);
+    console.warn("No se pudo leer el índice cacheado", error);
   }
 
-  const listing = await fetchPokemonListing(safePage, pageSize);
-  const items = await Promise.all(
-    listing.results.map(async (result) => {
-      try {
-        const detail = await fetchPokemonByName(result.name);
-        return await buildDetailedListItem(detail);
-      } catch {
-        return normalizeSimpleItem(result);
-      }
-    }),
+  void getFullPokemonIndex().catch((error) =>
+    console.warn("No se pudo construir el índice en segundo plano", error),
   );
+
+  const listing = await fetchPokemonListing(safePage, pageSize);
+  const items = await mapWithBatches(listing.results, 8, async (result) => {
+    try {
+      const detail = await fetchPokemonByName(result.name);
+      return buildFallbackItem(detail);
+    } catch {
+      return normalizeSimpleItem(result);
+    }
+  });
 
   const total = Math.min(listing.count, MAX_POKEMON_COUNT);
   const totalPages = Math.ceil(total / pageSize);
@@ -517,6 +519,20 @@ async function getFullPokemonIndex(): Promise<PokemonListItem[]> {
     });
 
   return pokemonIndexPromise;
+}
+
+async function getCachedPokemonIndex(): Promise<PokemonListItem[] | null> {
+  if (pokemonIndexCache && Date.now() - pokemonIndexCache.timestamp < FULL_INDEX_TTL_MS) {
+    return pokemonIndexCache.items;
+  }
+
+  const cached = await loadPokemonIndexFromDatabase();
+  if (cached) {
+    pokemonIndexCache = cached;
+    return cached.items;
+  }
+
+  return null;
 }
 
 async function buildPokemonIndex(): Promise<PokemonListItem[]> {
