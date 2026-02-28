@@ -1,7 +1,5 @@
 <div align="center">
   <img src="public/branding/RetroDex.webp" alt="RetroDex" width="420" />
-  <h1 style="margin-bottom:0">🧭 Mini Pokédex</h1>
-  <p style="margin-top:4px">Toque Game Boy, filtros veloces y fondos que no pierden detalle.</p>
 </div>
 
 <p align="center">
