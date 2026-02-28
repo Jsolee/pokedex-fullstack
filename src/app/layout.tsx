@@ -39,17 +39,17 @@ export default function RootLayout({
         <div className="gameboy-shell min-h-screen rounded-[32px] px-4 pb-4 pt-0 text-base text-emerald-50 shadow-2xl sm:px-8">
           <main className="mx-auto flex max-w-6xl flex-col gap-6">
             <div className="flex flex-col gap-0">
-              <div className="flex justify-center -mt-25 -mb-25">
+              <div className="flex justify-center -mt-0.5 -mb-0.5 sm:-mt-1 sm:-mb-1">
                 <Image
                   src="/branding/RetroDex.webp"
                   alt="RetroDex"
-                  width={320}
-                  height={96}
+                  width={424}
+                  height={112}
                   priority
-                  className="block h-auto w-[240px] sm:w-[300px]"
+                  className="block h-auto w-[56%] sm:w-[36%]"
                 />
               </div>
-              <MainNavigation className="sticky top-4 z-10" />
+              <MainNavigation className="sticky top-4 z-10 mt-1 sm:mt-2" />
             </div>
             {children}
           </main>
