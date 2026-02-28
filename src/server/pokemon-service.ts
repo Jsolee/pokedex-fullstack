@@ -383,7 +383,7 @@ export async function getPokemonList({
   const items = await mapWithBatches(listing.results, 8, async (result) => {
     try {
       const detail = await fetchPokemonByName(result.name);
-      return buildFallbackItem(detail);
+      return await buildDetailedListItem(detail);
     } catch {
       return normalizeSimpleItem(result);
     }
