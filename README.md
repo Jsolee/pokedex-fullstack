@@ -39,7 +39,7 @@ npm run build        # producción
 Por defecto sirve en `http://localhost:3000`.
 
 ## 🔧 Variables de entorno
-Guárdalas en `.env.local` si activas caché en BD:
+Guárdalas en `.env.local` si activas caché en BD: 
 ```
 DATABASE_URL="postgres://<user>:<password>@<host>:5432/<db>"
 CACHE_TTL_HOURS=24
