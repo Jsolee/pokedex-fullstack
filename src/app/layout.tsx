@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Press_Start_2P, Space_Grotesk } from "next/font/google";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 import { HomeButton } from "@/components/navigation/home-button";
 import { WallpaperController } from "@/components/ui/wallpaper-controller";
@@ -39,6 +41,8 @@ export default function RootLayout({
             {children}
           </main>
         </div>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
