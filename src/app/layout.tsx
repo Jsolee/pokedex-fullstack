@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { Press_Start_2P, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/next";
@@ -35,9 +36,21 @@ export default function RootLayout({
         className={`${pixel.variable} ${sans.variable} bg-gameboy-grid text-foreground antialiased`}
       >
         <WallpaperController />
-        <div className="gameboy-shell min-h-screen rounded-[32px] px-4 py-6 text-base text-emerald-50 shadow-2xl sm:px-8">
-          <main className="mx-auto max-w-6xl space-y-6">
-            <MainNavigation className="sticky top-4 z-10" />
+        <div className="gameboy-shell min-h-screen rounded-[32px] px-4 pb-4 pt-0 text-base text-emerald-50 shadow-2xl sm:px-8">
+          <main className="mx-auto flex max-w-6xl flex-col gap-6">
+            <div className="flex flex-col gap-0">
+              <div className="flex justify-center -mt-25 -mb-25">
+                <Image
+                  src="/branding/RetroDex.webp"
+                  alt="RetroDex"
+                  width={320}
+                  height={96}
+                  priority
+                  className="block h-auto w-[240px] sm:w-[300px]"
+                />
+              </div>
+              <MainNavigation className="sticky top-4 z-10" />
+            </div>
             {children}
           </main>
         </div>
