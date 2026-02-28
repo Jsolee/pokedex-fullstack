@@ -20,6 +20,9 @@ const disableCacheEnv = ["1", "true"].includes(
 
 let prismaAvailable = !disableCacheEnv;
 let hasLoggedPrismaWarning = false;
+let nextPrismaRetryAt = 0;
+
+const PRISMA_RETRY_BACKOFF_MS = Number(process.env.SUPABASE_RETRY_BACKOFF_MS ?? 5 * 60 * 1000);
 
 function logCacheWarning(message: string) {
   if (hasLoggedPrismaWarning || process.env.NODE_ENV !== "development") {
@@ -35,11 +38,20 @@ function shouldSwallowPrismaError(error: unknown) {
   }
 
   const maybeError = error as { code?: string; name?: string; message?: string };
-  if (maybeError.code === "P1001" || maybeError.name === "PrismaClientInitializationError") {
+  const message = maybeError.message ?? "";
+  const isConnectivityError =
+    maybeError.code === "P1001" ||
+    maybeError.name === "PrismaClientInitializationError" ||
+    message.includes("Can't reach database server") ||
+    message.includes("connect") ||
+    message.includes("ECONN");
+
+  if (isConnectivityError) {
     logCacheWarning(
-      `Deshabilitando cache de Supabase por error de conexión${maybeError.message ? `: ${maybeError.message}` : ""}`,
+      `Deshabilitando cache de Supabase por error de conexión${message ? `: ${message}` : ""}`,
     );
     prismaAvailable = false;
+    nextPrismaRetryAt = Date.now() + PRISMA_RETRY_BACKOFF_MS;
     return true;
   }
 
@@ -51,6 +63,14 @@ export function isPrismaAvailable() {
 }
 
 export async function runPrisma<T>(action: (client: PrismaClient) => Promise<T>): Promise<T | null> {
+  if (!prismaAvailable) {
+    if (Date.now() >= nextPrismaRetryAt) {
+      prismaAvailable = true;
+    } else {
+      return null;
+    }
+  }
+
   if (!prismaAvailable) {
     return null;
   }
