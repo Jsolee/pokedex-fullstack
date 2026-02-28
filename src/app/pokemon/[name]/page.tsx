@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { BackButton } from "@/components/navigation/back-button";
 import { PokemonHero } from "@/components/pokedex/pokemon-hero";
 import { PokemonStatBars } from "@/components/pokedex/pokemon-stat-bars";
 import { PokemonVitals } from "@/components/pokedex/pokemon-vitals";
@@ -36,6 +37,7 @@ export default async function PokemonDetailPage({ params }: PageProps) {
 
   return (
     <div className="space-y-10">
+      <BackButton />
       <PokemonHero
         key={profile.pokemon.id}
         pokemon={profile.pokemon}

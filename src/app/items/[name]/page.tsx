@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
+import { BackButton } from "@/components/navigation/back-button";
 import { DataState } from "@/components/state/data-state";
 import { Badge } from "@/components/ui/badge";
 import { formatSlug } from "@/lib/format";
@@ -33,6 +34,7 @@ export default async function ItemDetailPage({ params }: PageProps) {
 
     return (
       <div className="space-y-8">
+        <BackButton />
         <header className="rounded-3xl border border-emerald-900/50 bg-emerald-950/70 p-6">
           <div className="flex flex-wrap items-center gap-4">
             {item.sprites?.default && (

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 
+import { BackButton } from "@/components/navigation/back-button";
 import { DataState } from "@/components/state/data-state";
 import { Badge } from "@/components/ui/badge";
 import { formatSlug } from "@/lib/format";
@@ -32,6 +33,7 @@ export default async function MoveDetailPage({ params }: PageProps) {
 
     return (
       <div className="space-y-8">
+        <BackButton />
         <header className="rounded-3xl border border-emerald-900/50 bg-emerald-950/70 p-6">
           <p className="pixel-font text-xs text-emerald-300">Movimiento</p>
           <h1 className="mt-3 text-2xl font-black text-primary">{formatSlug(move.name)}</h1>
