@@ -192,6 +192,103 @@ function normalizeSimpleItem(result: { name: string; url: string }): PokemonList
   };
 }
 
+async function collectFilteredPokemonPage(filters: PokemonFilters, page: number, pageSize: number) {
+  const cachedIndex = await getCachedPokemonIndexWithTimeout(250);
+  if (cachedIndex?.length) {
+    const filtered = cachedIndex.filter((pokemon: PokemonListItem) => matchesFilters(pokemon, filters));
+    const total = filtered.length;
+    const start = (page - 1) * pageSize;
+    return {
+      items: filtered.slice(start, start + pageSize),
+      total,
+    };
+  }
+
+  return collectFilteredPokemonPageLegacy(filters, page, pageSize);
+}
+
+async function collectFilteredPokemonPageLegacy(filters: PokemonFilters, page: number, pageSize: number) {
+  const candidateNames = await resolveCandidateNames(filters);
+  const uniqueNames = Array.from(new Set(candidateNames)).slice(0, MAX_POKEMON_COUNT);
+  const offset = (page - 1) * pageSize;
+  const endIndex = offset + pageSize;
+  const needsMetadata = Boolean(filters.generation || filters.evolution || filters.legendary);
+
+  if (!needsMetadata) {
+    const total = uniqueNames.length;
+    const pageNames = uniqueNames.slice(offset, endIndex);
+    const pageItems = await mapWithBatches(pageNames, 8, async (name) => {
+      try {
+        const detail = await fetchPokemonByName(name);
+        return await buildDetailedListItem(detail);
+      } catch (error) {
+        console.warn(`No se pudo enriquecer ${name}`, error);
+        return null;
+      }
+    });
+
+    return {
+      items: pageItems.filter((item): item is PokemonListItem => Boolean(item)),
+      total,
+    };
+  }
+
+  let matchedCount = 0;
+  const items: PokemonListItem[] = [];
+  const batchSize = 12;
+
+  for (let i = 0; i < uniqueNames.length; i += batchSize) {
+    const chunk = uniqueNames.slice(i, i + batchSize);
+    const chunkEntries = await Promise.all(
+      chunk.map(async (name) => {
+        try {
+          const species = await fetchPokemonSpecies(name);
+          const evolution = await resolveEvolutionMetadata(species);
+          const metadata = {
+            generation: species.generation?.name ?? null,
+            isLegendary: Boolean(species.is_legendary || species.is_mythical),
+            evolutionStage: evolution.stage,
+          } as const;
+
+          if (!matchesMetadata(filters, metadata)) {
+            return null;
+          }
+
+          return { name, species, evolution, metadata };
+        } catch (error) {
+          console.warn(`No se pudo obtener metadata para ${name}`, error);
+          return null;
+        }
+      }),
+    );
+
+    for (const entry of chunkEntries) {
+      if (!entry) {
+        continue;
+      }
+
+      const matchedIndex = matchedCount;
+      matchedCount += 1;
+
+      if (matchedIndex >= offset && matchedIndex < endIndex) {
+        try {
+          const detail = await fetchPokemonByName(entry.name);
+          const enriched = await buildDetailedListItem(detail, {
+            species: entry.species,
+            evolution: entry.evolution,
+            isLegendaryOverride: entry.metadata.isLegendary,
+          });
+          items.push(enriched);
+        } catch (error) {
+          console.warn(`No se pudo enriquecer ${entry.name}`, error);
+        }
+      }
+    }
+  }
+
+  return { items, total: matchedCount };
+}
+
 export async function getPokemonList({
   page = 1,
   query,
@@ -236,12 +333,9 @@ export async function getPokemonList({
   }
   if (hasFilters) {
     const safePage = Number.isFinite(page) && page > 0 ? page : 1;
-    const filteredItems = await collectFilteredPokemon(filters!);
-    const total = filteredItems.length;
+    const { items, total } = await collectFilteredPokemonPage(filters!, safePage, pageSize);
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     const normalizedPage = Math.min(Math.max(1, safePage), totalPages);
-    const start = (normalizedPage - 1) * pageSize;
-    const items = filteredItems.slice(start, start + pageSize);
 
     return {
       items,
@@ -256,8 +350,10 @@ export async function getPokemonList({
 
   const safePage = Number.isFinite(page) && page > 0 ? page : 1;
 
+  const listingPromise = fetchPokemonListing(safePage, pageSize);
+
   try {
-    const cachedIndex = await getCachedPokemonIndex();
+    const cachedIndex = await getCachedPokemonIndexWithTimeout(250);
     if (cachedIndex?.length) {
       const total = Math.min(cachedIndex.length, MAX_POKEMON_COUNT);
       const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -283,7 +379,7 @@ export async function getPokemonList({
     console.warn("No se pudo construir el índice en segundo plano", error),
   );
 
-  const listing = await fetchPokemonListing(safePage, pageSize);
+  const listing = await listingPromise;
   const items = await mapWithBatches(listing.results, 8, async (result) => {
     try {
       const detail = await fetchPokemonByName(result.name);
@@ -305,6 +401,13 @@ export async function getPokemonList({
     isSearch: false,
     filtersApplied: false,
   };
+}
+
+async function getCachedPokemonIndexWithTimeout(timeoutMs: number) {
+  return Promise.race([
+    getCachedPokemonIndex(),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs)),
+  ]);
 }
 
 export async function getPokemonDetail(nameOrId: string): Promise<PokemonApiResponse> {
@@ -432,65 +535,6 @@ function matchesFilters(pokemon: PokemonListItem, filters: PokemonFilters) {
   }
 
   return true;
-}
-
-async function collectFilteredPokemon(filters: PokemonFilters) {
-  try {
-    const index = await getFullPokemonIndex();
-    const filtered = index.filter((pokemon: PokemonListItem) => matchesFilters(pokemon, filters));
-    return sortPokemonList(filtered);
-  } catch (error) {
-    console.warn("No se pudo usar el índice completo, aplicando método alternativo", error);
-    return collectFilteredPokemonLegacy(filters);
-  }
-}
-
-async function collectFilteredPokemonLegacy(filters: PokemonFilters) {
-  const candidateNames = await resolveCandidateNames(filters);
-  const uniqueNames = Array.from(new Set(candidateNames)).slice(0, MAX_POKEMON_COUNT);
-
-  const speciesEntries = await mapWithBatches(uniqueNames, 12, async (name) => {
-    try {
-      const species = await fetchPokemonSpecies(name);
-      const evolution = await resolveEvolutionMetadata(species);
-      const metadata = {
-        generation: species.generation?.name ?? null,
-        isLegendary: Boolean(species.is_legendary || species.is_mythical),
-        evolutionStage: evolution.stage,
-      } as const;
-
-      return { name, species, evolution, metadata };
-    } catch (error) {
-      console.warn(`No se pudo obtener metadata para ${name}`, error);
-      return null;
-    }
-  });
-
-  const matchingEntries = speciesEntries.filter(
-    (entry): entry is NonNullable<typeof entry> => Boolean(entry && matchesMetadata(filters, entry.metadata)),
-  );
-
-  const detailed = await mapWithBatches(matchingEntries, 8, async (entry) => {
-    try {
-      const detail = await fetchPokemonByName(entry.name);
-      const enriched = await buildDetailedListItem(detail, {
-        species: entry.species,
-        evolution: entry.evolution,
-        isLegendaryOverride: entry.metadata.isLegendary,
-      });
-
-      if (filters.type && !enriched.types.includes(filters.type)) {
-        return null;
-      }
-
-      return enriched;
-    } catch (error) {
-      console.warn(`No se pudo enriquecer ${entry.name}`, error);
-      return null;
-    }
-  });
-
-  return detailed.filter((item): item is PokemonListItem => Boolean(item));
 }
 
 async function getFullPokemonIndex(): Promise<PokemonListItem[]> {
