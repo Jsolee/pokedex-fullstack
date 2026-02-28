@@ -36,11 +36,7 @@ export default async function TypesPage() {
   return (
     <div className="space-y-8">
       <header className="rounded-3xl border border-emerald-900/50 bg-emerald-950/70 p-6">
-        <p className="pixel-font text-xs text-emerald-300">Sincronizados con Supabase</p>
         <h1 className="mt-2 pixel-font text-2xl text-primary">Tipos Pokémon</h1>
-        <p className="text-sm text-emerald-200/80">
-          Esta pantalla llena la base de datos si está vacía. A partir de entonces los datos se sirven directamente desde Supabase para evitar golpes innecesarios a la PokeAPI.
-        </p>
       </header>
       <section className="grid gap-4 md:grid-cols-2">
         {types.map((type) => (
