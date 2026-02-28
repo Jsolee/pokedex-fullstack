@@ -4,7 +4,7 @@
 </div>
 
 <p align="center">
-  <img src="public/backgrounds/foto3.webp" alt="Vista previa de la Mini Pokédex" width="720" />
+  <img src="public/backgrounds/foto1.webp" alt="Vista previa de la Mini Pokédex" width="720" />
 </p>
 
 ---
