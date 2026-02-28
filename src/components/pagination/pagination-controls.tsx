@@ -8,16 +8,18 @@ import { Button } from "@/components/ui/button";
 interface PaginationControlsProps {
   page: number;
   totalPages: number;
+  basePath?: string;
+  paramKey?: string;
 }
 
-export function PaginationControls({ page, totalPages }: PaginationControlsProps) {
+export function PaginationControls({ page, totalPages, basePath = "/", paramKey = "page" }: PaginationControlsProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
   const goToPage = (nextPage: number) => {
     const params = new URLSearchParams(searchParams.toString());
-    params.set("page", String(nextPage));
-    router.push(`/?${params.toString()}`);
+    params.set(paramKey, String(nextPage));
+    router.push(`${basePath}?${params.toString()}`);
   };
 
   const canGoPrev = page > 1;

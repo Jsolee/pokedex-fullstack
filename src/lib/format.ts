@@ -28,3 +28,14 @@ export function toKilograms(hectograms: number) {
 export function toMeters(decimeters: number) {
   return (decimeters / 10).toFixed(1);
 }
+
+export function formatSlug(value: string) {
+  return value
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((chunk) => chunk.charAt(0).toUpperCase() + chunk.slice(1))
+    .join(" ")
+    .replace(/\bDe\b/gi, "de")
+    .replace(/\bLa\b/gi, "la")
+    .trim();
+}
